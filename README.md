@@ -37,3 +37,26 @@ A Chrome extension for intelligent email enhancement and translation directly wi
 - Groq API Key
 
 ### Project Structure 
+
+```
+gmail-assistant/
+├── manifest.json # Extension configuration
+├── content.js # Gmail integration logic
+├── emailProcessor.js # AI processing logic
+├── popup.html # Settings popup
+└── styles.css # Styling
+```
+
+## Privacy & Security
+
+- Your API key is stored locally in Chrome's secure storage
+- No email content is stored or logged
+- All processing is done through secure API calls to Groq
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
