@@ -1,6 +1,6 @@
 # Gmail Assistant
 
-A Chrome extension that enhances Gmail with AI-powered text improvement and translation capabilities using Groq AI.
+A Chrome extension for intelligent email enhancement and translation directly within Gmail, powered by Groq AI.
 
 ## Features
 
