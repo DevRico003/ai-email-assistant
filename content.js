@@ -120,7 +120,7 @@ function addButtons(emailElement) {
         <svg viewBox="0 0 24 24" width="16" height="16">
             <path fill="currentColor" d="M7.5 5.6L5 7l1.4-2.5L5 2l2.5 1.4L10 2 8.6 4.5 10 7 7.5 5.6zm12 9.8L22 14l-1.4 2.5L22 19l-2.5-1.4L17 19l1.4-2.5L17 14l2.5 1.4zM22 2l-1.4 2.5L22 7l-2.5-1.4L17 7l1.4-2.5L17 2l2.5 1.4L22 2zm-8.6 7.5L12 6.4l-1.4 3.1-3.1 1.4 3.1 1.4 1.4 3.1 1.4-3.1 3.1-1.4-3.1-1.4z"/>
         </svg>
-        <span class="tooltip">Verbessern</span>
+        <span class="tooltip" style="left: 0; transform: translateX(0);">Verbessern</span>
     `;
     improveButton.onclick = () => handleImprovement(emailElement);
     
