@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Email Assistant</title>
+    <style>
+        body {
+            width: 300px;
+            padding: 10px;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Email Assistant Settings</h2>
+    <div class="input-group">
+        <label for="apiKey">Groq API Key:</label>
+        <input type="password" id="apiKey" placeholder="Enter your Groq API Key">
+    </div>
+    <p class="info">
+        Get your API key from 
+        <a href="https://console.groq.com/" target="_blank" rel="noopener noreferrer">
+            Groq Console
+        </a>
+    </p>
+    <script src="popup.js"></script>
+</body>
+</html> 
