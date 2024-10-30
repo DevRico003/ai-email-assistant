@@ -52,10 +52,8 @@ function showLanguageSelector(emailElement, buttonRect) {
     const selector = document.createElement('div');
     selector.className = 'language-selector';
     
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    selector.style.position = 'fixed';
-    selector.style.left = `${buttonRect.left}px`;
-    selector.style.top = `${buttonRect.bottom + scrollTop + 5}px`;
+    const buttonContainer = emailElement.parentElement.querySelector('.email-assistant-container');
+    buttonContainer.appendChild(selector);
 
     Object.entries(SUPPORTED_LANGUAGES).forEach(([code, langInfo]) => {
         const button = document.createElement('div');
@@ -78,8 +76,6 @@ function showLanguageSelector(emailElement, buttonRect) {
         };
         selector.appendChild(button);
     });
-
-    document.body.appendChild(selector);
 
     document.addEventListener('click', function closeSelector(e) {
         if (!selector.contains(e.target) && !e.target.closest('.translate-button')) {
@@ -146,9 +142,32 @@ function addButtons(emailElement) {
 
 function watchForComposeBox() {
     function addButtonsToComposeBox() {
-        const composeBoxes = document.querySelectorAll('div[role="textbox"][aria-label*="Message Body"], div[role="textbox"][aria-label*="Nachricht"]');
-        composeBoxes.forEach(box => {
-            if (!box.previousElementSibling?.classList.contains('email-assistant-container')) {
+        const emailBoxes = Array.from(document.querySelectorAll(`
+            div[role="textbox"][aria-label*="Message Body"], 
+            div[role="textbox"][aria-label*="Nachricht"],
+            div[role="textbox"][aria-label*="Reply"],
+            div[role="textbox"][aria-label*="Antworten"],
+            div[aria-label*="Reply"][role="textbox"],
+            div[aria-label*="Antworten"][role="textbox"],
+            div.Am.Al.editable[role="textbox"],
+            div[g_editable="true"],
+            div.editable[contenteditable="true"],
+            div[aria-label*="Antworten Sie"][role="textbox"]
+        `));
+
+        const replyContainers = document.querySelectorAll('.M9');
+        replyContainers.forEach(container => {
+            const editor = container.querySelector('[contenteditable="true"]');
+            if (editor && !emailBoxes.includes(editor)) {
+                emailBoxes.push(editor);
+            }
+        });
+        
+        emailBoxes.forEach(box => {
+            const container = box.closest('.M9, .Am.Al') || box.parentElement;
+            const existingButtons = container.querySelector('.email-assistant-container');
+            
+            if (!existingButtons && box.isContentEditable) {
                 addButtons(box);
             }
         });
@@ -156,17 +175,42 @@ function watchForComposeBox() {
 
     addButtonsToComposeBox();
 
+    const observerConfig = {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['role', 'aria-label', 'class', 'contenteditable'],
+        characterData: false
+    };
+
     const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.addedNodes.length) {
-                addButtonsToComposeBox();
+        for (const mutation of mutations) {
+            const isRelevantChange = 
+                mutation.type === 'childList' ||
+                (mutation.type === 'attributes' && 
+                 (mutation.target.getAttribute('contenteditable') === 'true' ||
+                  mutation.target.getAttribute('role') === 'textbox' ||
+                  mutation.target.classList.contains('M9') ||
+                  mutation.target.classList.contains('Am') ||
+                  mutation.target.classList.contains('Al')));
+
+            if (isRelevantChange) {
+                setTimeout(addButtonsToComposeBox, 100);
+                break;
             }
-        });
+        }
     });
 
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
+    observer.observe(document.body, observerConfig);
+
+    document.addEventListener('click', (e) => {
+        const replyButton = e.target.closest('[role="link"][aria-label*="Reply"], [role="link"][aria-label*="Antworten"]');
+        if (replyButton) {
+            const attempts = [100, 300, 500, 1000];
+            attempts.forEach(delay => {
+                setTimeout(addButtonsToComposeBox, delay);
+            });
+        }
     });
 }
 

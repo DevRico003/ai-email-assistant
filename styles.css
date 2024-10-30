@@ -1,23 +1,45 @@
 .email-assistant-container {
-  position: relative;
-  display: inline-flex;
+  position: absolute;
+  left: 0;
+  top: -48px;
+  z-index: 999;
+  display: flex;
   gap: 8px;
-  padding: 4px;
-  border-radius: 4px;
-  background: transparent;
-  align-items: center;
-  margin-bottom: 8px;
+  padding: 8px 16px;
+  background-color: transparent;
+  width: 100%;
+  box-sizing: border-box;
 }
 
+/* Für Inline-Reply-Container */
+.M9 {
+  position: relative;
+  padding-top: 48px;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Anpassung für den Standard-Editor */
+div[role="textbox"] {
+  position: relative;
+  margin-top: 48px !important;
+}
+
+.M9 .email-assistant-container {
+  background-color: transparent;
+  border: none;
+}
+
+/* Stelle sicher, dass die Buttons über dem Editor erscheinen */
 .email-assistant-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 6px;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
   border: none;
-  border-radius: 50%;
+  border-radius: 4px;
   background: transparent;
   cursor: pointer;
   position: relative;
@@ -61,16 +83,16 @@
 }
 
 .language-selector {
-  position: fixed;
+  position: absolute;
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 8px 0;
+  padding: 8px;
   z-index: 1000;
-  min-width: 200px;
-  max-height: 300px;
-  overflow-y: auto;
   border: 1px solid rgba(0, 0, 0, 0.1);
+  left: 0;
+  top: 100%;
+  margin-top: 5px;
 }
 
 .language-selector-button {
@@ -135,4 +157,46 @@
 
 .gmail-assistant-button:hover {
     background-color: #357abd;
+}
+
+/* Neue Styles für kompaktes Layout in Reply-Fenstern */
+.M9 .language-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 300px;
+  max-height: none;
+  overflow: visible;
+}
+
+.M9 .language-selector-button {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  gap: 4px;
+  border-radius: 4px;
+}
+
+.M9 .language-selector-button:hover {
+  background-color: rgba(26, 115, 232, 0.1);
+}
+
+.M9 .language-flag {
+  font-size: 16px;
+}
+
+.M9 .language-name {
+  font-size: 12px;
+}
+
+/* Fallback für große Bildschirme */
+@media (min-width: 1200px) {
+  .language-selector {
+    min-width: 200px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .language-selector-button {
+    padding: 10px 16px;
+  }
 } 

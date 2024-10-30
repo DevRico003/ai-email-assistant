@@ -20,7 +20,11 @@
       "matches": ["https://mail.google.com/*"],
       "js": ["emailProcessor.js", "content.js"],
       "css": ["styles.css"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
-  ]
+  ],
+  "web_accessible_resources": [{
+    "resources": ["styles.css"],
+    "matches": ["https://mail.google.com/*"]
+  }]
 } 
