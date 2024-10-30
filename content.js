@@ -8,6 +8,43 @@ const SUPPORTED_LANGUAGES = {
     'it': { name: 'Italiano', flag: '🇮🇹' }
 };
 
+async function detectFormality(text) {
+    const apiKey = await chrome.storage.local.get(['groqApiKey']).then(result => result.groqApiKey);
+    
+    if (!apiKey) {
+        throw new Error('API Key nicht gefunden');
+    }
+
+    try {
+        const formalityResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: "llama-3.1-8b-instant",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are a formality detector. Respond only with 'formal' or 'informal'."
+                    },
+                    {
+                        role: "user",
+                        content: `Determine if this text is formal or informal: ${text}`
+                    }
+                ],
+                temperature: 0.1
+            })
+        });
+        const data = await formalityResponse.json();
+        return data.choices[0].message.content.trim().toLowerCase();
+    } catch (error) {
+        console.error('Formality detection error:', error);
+        return 'formal'; // Fallback to formal in case of error
+    }
+}
+
 function createLoadingSpinner() {
     const spinner = document.createElement('div');
     spinner.className = 'loading-spinner';
@@ -134,10 +171,263 @@ function addButtons(emailElement) {
         showLanguageSelector(emailElement, rect);
     };
     
+    if (emailElement.closest('.M9')) {
+        const suggestButton = document.createElement('button');
+        suggestButton.className = 'email-assistant-button suggest-button';
+        suggestButton.innerHTML = `
+            <svg viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+            </svg>
+            <span class="tooltip">Vorschläge</span>
+        `;
+        suggestButton.onclick = (e) => {
+            e.stopPropagation();
+            showSuggestions(emailElement);
+        };
+        
+        buttonContainer.appendChild(suggestButton);
+    }
+    
     buttonContainer.appendChild(improveButton);
     buttonContainer.appendChild(translateButton);
     
     emailElement.parentElement.insertBefore(buttonContainer, emailElement);
+}
+
+function findEmailContext() {
+    // Sammle alle Emails in der Konversation
+    const emailContainers = Array.from(document.querySelectorAll('.h7, .a3s.aiL'));
+    let context = {
+        latestEmail: '',
+        previousEmails: [],
+        senders: []
+    };
+
+    // Finde den aktuellen Benutzer (Gmail-Adresse)
+    const userEmail = document.querySelector('.gb_d.gb_Na.gb_g')?.getAttribute('aria-label') || '';
+    const currentUser = userEmail.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/i)?.[1] || '';
+
+    // Verarbeite die Emails in umgekehrter Reihenfolge (neueste zuerst)
+    for (let container of emailContainers.reverse()) {
+        // Finde Sender-Informationen
+        const headerContainer = container.closest('.gs') || container.closest('.adn');
+        let sender = '';
+        let timestamp = '';
+        
+        if (headerContainer) {
+            // Versuche den Sender zu finden
+            const senderElement = headerContainer.querySelector('.gD') || 
+                                headerContainer.querySelector('.g2') ||
+                                headerContainer.querySelector('[email]');
+            
+            if (senderElement) {
+                sender = senderElement.getAttribute('email') || senderElement.innerText;
+            }
+
+            // Versuche den Zeitstempel zu finden
+            const timeElement = headerContainer.querySelector('.g3') || 
+                              headerContainer.querySelector('.adx');
+            if (timeElement) {
+                timestamp = timeElement.innerText;
+            }
+        }
+
+        let emailText = container.innerText.trim();
+        
+        // Bereinige den Email-Text
+        emailText = emailText
+            .replace(/^Am .*schrieb.*:\s*/gm, '')
+            .replace(/^-{3,}\s*Weitergeleitete Nachricht\s*-{3,}.*$/gm, '')
+            .replace(/^>.*$/gm, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+
+        if (emailText.length > 0) {
+            const emailInfo = {
+                text: emailText,
+                sender: sender,
+                timestamp: timestamp,
+                isCurrentUser: sender === currentUser
+            };
+
+            if (!context.latestEmail) {
+                context.latestEmail = emailInfo;
+            } else {
+                context.previousEmails.push(emailInfo);
+            }
+        }
+    }
+
+    if (!context.latestEmail) {
+        throw new Error('Keine Email-Konversation gefunden');
+    }
+
+    return context;
+}
+
+async function showSuggestions(emailElement) {
+    // Entferne existierende Popups
+    document.querySelectorAll('.suggestions-popup-overlay').forEach(overlay => overlay.remove());
+
+    // Zeige Loading-Overlay
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.className = 'suggestions-popup-overlay';
+    
+    const loadingContent = document.createElement('div');
+    loadingContent.className = 'loading-content';
+    loadingContent.innerHTML = `
+        <div class="loading-spinner-large"></div>
+        <div class="loading-text">Generiere Antwortvorschläge...</div>
+    `;
+    
+    loadingOverlay.appendChild(loadingContent);
+    document.body.appendChild(loadingOverlay);
+
+    try {
+        // Hole frischen Email-Kontext
+        const emailContext = findEmailContext();
+        if (!emailContext.latestEmail || !emailContext.latestEmail.text) {
+            throw new Error('Keine aktuelle Email gefunden');
+        }
+
+        const apiKey = await chrome.storage.local.get(['groqApiKey']).then(result => result.groqApiKey);
+        if (!apiKey) throw new Error('API Key nicht gefunden');
+
+        const isFormal = await detectFormality(emailContext.latestEmail.text);
+
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: "llama-3.1-8b-instant",
+                messages: [
+                    {
+                        role: "system",
+                        content: `Generate exactly 3 distinct ${isFormal ? 'formal' : 'informal'} email responses in the same language as the original email. Each response must be complete and self-contained. Responses must be separated by |||. Do not add any other text or explanations.`
+                    },
+                    {
+                        role: "user",
+                        content: `Current conversation:
+                            Latest email to respond to (from ${emailContext.latestEmail.sender}):
+                            "${emailContext.latestEmail.text}"
+
+                            ${emailContext.previousEmails.length > 0 ? `
+                            Previous messages:
+                            ${emailContext.previousEmails.map(email => 
+                                `From: ${email.sender}
+                                Message: "${email.text}"`
+                            ).join('\n---\n')}` : ''}
+                            
+                            Generate 3 different appropriate responses to the latest email.`
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 1000
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API Fehler: ${response.status}`);
+        }
+
+        const data = await response.json();
+        let suggestions = data.choices[0].message.content
+            .split('|||')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        // Stelle sicher, dass wir genau 3 Vorschläge haben
+        if (suggestions.length < 3) {
+            // Wenn weniger als 3, generiere fehlende Vorschläge
+            const additionalResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: "llama-3.1-8b-instant",
+                    messages: [
+                        {
+                            role: "system",
+                            content: `Generate ${3 - suggestions.length} different ${isFormal ? 'formal' : 'informal'} email responses. Separate with |||.`
+                        },
+                        {
+                            role: "user",
+                            content: `Generate additional responses for: ${emailContext.latestEmail.text}`
+                        }
+                    ],
+                    temperature: 0.8
+                })
+            });
+            
+            const additionalData = await additionalResponse.json();
+            const additionalSuggestions = additionalData.choices[0].message.content
+                .split('|||')
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
+            
+            suggestions = [...suggestions, ...additionalSuggestions].slice(0, 3);
+        }
+
+        // Erstelle Popup für Vorschläge
+        const popupOverlay = document.createElement('div');
+        popupOverlay.className = 'suggestions-popup-overlay';
+
+        const popup = document.createElement('div');
+        popup.className = 'suggestions-popup';
+
+        const header = document.createElement('div');
+        header.className = 'suggestions-header';
+        header.innerHTML = `
+            <h3>Antwortvorschläge</h3>
+            <button class="close-button">×</button>
+        `;
+        popup.appendChild(header);
+
+        const suggestionsContainer = document.createElement('div');
+        suggestionsContainer.className = 'suggestions-list';
+
+        suggestions.forEach((suggestion, index) => {
+            const suggestionCard = document.createElement('div');
+            suggestionCard.className = 'suggestion-card';
+            
+            const preview = document.createElement('div');
+            preview.className = 'suggestion-preview';
+            preview.textContent = suggestion;
+            
+            const useButton = document.createElement('button');
+            useButton.className = 'use-suggestion-button';
+            useButton.textContent = 'Verwenden';
+            useButton.onclick = () => {
+                emailElement.innerText = suggestion;
+                popupOverlay.remove();
+            };
+
+            suggestionCard.appendChild(preview);
+            suggestionCard.appendChild(useButton);
+            suggestionsContainer.appendChild(suggestionCard);
+        });
+
+        popup.appendChild(suggestionsContainer);
+        popupOverlay.appendChild(popup);
+        document.body.appendChild(popupOverlay);
+
+        // Event-Listener für Schließen
+        header.querySelector('.close-button').onclick = () => popupOverlay.remove();
+        popupOverlay.onclick = (e) => {
+            if (e.target === popupOverlay) popupOverlay.remove();
+        };
+
+    } catch (error) {
+        console.error('Suggestion error:', error);
+        showError('Vorschlagsfehler: ' + error.message);
+    } finally {
+        loadingOverlay.remove();
+    }
 }
 
 function watchForComposeBox() {

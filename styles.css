@@ -199,4 +199,189 @@ div[role="textbox"] {
   .language-selector-button {
     padding: 10px 16px;
   }
-} 
+}
+
+/* Füge diese Styles zu deiner bestehenden CSS hinzu */
+.suggestions-container {
+    position: absolute;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    z-index: 1000;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    left: 0;
+    top: 100%;
+    margin-top: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.suggestion-button {
+    background: transparent;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    color: #202124;
+    font-size: 14px;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+
+.suggestion-button:hover {
+    background-color: rgba(26, 115, 232, 0.1);
+    border-color: #1a73e8;
+    color: #1a73e8;
+}
+
+/* Anpassung für Reply-Container */
+.M9 .suggestions-container {
+    max-width: 300px;
+}
+
+/* Vorschläge Popup Styles */
+.suggestions-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.suggestions-popup {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.suggestions-header {
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.suggestions-header h3 {
+    margin: 0;
+    color: #202124;
+    font-size: 18px;
+}
+
+.close-button {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    color: #5f6368;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.close-button:hover {
+    background-color: rgba(32, 33, 36, 0.059);
+}
+
+.suggestions-list {
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.suggestion-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.suggestion-preview {
+    color: #202124;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.use-suggestion-button {
+    align-self: flex-end;
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.use-suggestion-button:hover {
+    background-color: #1557b0;
+}
+
+/* Scrollbar Styling */
+.suggestion-preview::-webkit-scrollbar {
+    width: 8px;
+}
+
+.suggestion-preview::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.suggestion-preview::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.suggestion-preview::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Loading Styles */
+.loading-content {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.loading-spinner-large {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(26, 115, 232, 0.2);
+    border-top: 3px solid #1a73e8;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-text {
+    color: #202124;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
