@@ -5,6 +5,38 @@ async function improveEmail(text, targetLanguage = null) {
         throw new Error('API Key nicht gefunden. Bitte fügen Sie einen API Key in den Einstellungen hinzu.');
     }
 
+    // Sprache erkennen
+    const detectLanguage = async (text) => {
+        try {
+            const languageResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: "llama-3.1-8b-instant",
+                    messages: [
+                        {
+                            role: "system",
+                            content: "You are a language detector. Respond only with the language code: 'en', 'de', 'fr', 'es', or 'it'."
+                        },
+                        {
+                            role: "user",
+                            content: `Detect the language of this text and respond with the language code: ${text}`
+                        }
+                    ],
+                    temperature: 0.1
+                })
+            });
+            const data = await languageResponse.json();
+            return data.choices[0].message.content.trim().toLowerCase();
+        } catch (error) {
+            console.error('Language detection error:', error);
+            return 'en'; // Fallback auf Englisch
+        }
+    };
+
     // Formalität erkennen
     const detectFormality = async (text) => {
         try {
@@ -37,6 +69,7 @@ async function improveEmail(text, targetLanguage = null) {
         }
     };
 
+    const detectedLanguage = await detectLanguage(text);
     const isFormal = await detectFormality(text);
     
     const languageMap = {
@@ -45,6 +78,14 @@ async function improveEmail(text, targetLanguage = null) {
         'fr': 'French',
         'es': 'Spanish',
         'it': 'Italian'
+    };
+
+    const systemPrompts = {
+        'en': `Improve this text while maintaining a ${isFormal ? 'formal' : 'informal'} tone. Focus on enhancing clarity and professionalism.`,
+        'de': `Verbessere diesen Text und behalte dabei einen ${isFormal ? 'formellen' : 'informellen'} Ton bei. Achte auf Klarheit und Professionalität.`,
+        'fr': `Améliorez ce texte en maintenant un ton ${isFormal ? 'formel' : 'informel'}. Concentrez-vous sur la clarté et le professionnalisme.`,
+        'es': `Mejora este texto manteniendo un tono ${isFormal ? 'formal' : 'informal'}. Céntrate en la claridad y el profesionalismo.`,
+        'it': `Migliora questo testo mantenendo un tono ${isFormal ? 'formale' : 'informale'}. Concentrati sulla chiarezza e la professionalità.`
     };
 
     try {
@@ -61,16 +102,16 @@ async function improveEmail(text, targetLanguage = null) {
                         role: "system",
                         content: targetLanguage
                             ? `You are a translator. Output ONLY the direct translation in ${languageMap[targetLanguage]}. Maintain the exact ${isFormal ? 'formal' : 'informal'} tone. Do not explain or add any other text.`
-                            : `You are an editor. Output ONLY the improved text. Maintain the exact ${isFormal ? 'formal' : 'informal'} tone and original language. Do not explain or add any other text.`
+                            : `You are an editor. ${systemPrompts[detectedLanguage]} Output ONLY the improved text in ${languageMap[detectedLanguage]}. Do not explain or add any other text.`
                     },
                     {
                         role: "user",
                         content: targetLanguage
                             ? `Translate to ${languageMap[targetLanguage]}: ${text}`
-                            : `Improve this text by enhancing grammar, sentence structure, and overall clarity while maintaining the original meaning: ${text}`
+                            : `Improve this text: ${text}`
                     }
                 ],
-                temperature: 0.1  // Niedrigere Temperatur für konsistentere Ergebnisse
+                temperature: 0.1
             })
         });
 
@@ -87,15 +128,21 @@ async function improveEmail(text, targetLanguage = null) {
         }
 
         const data = await response.json();
-        // Entferne eventuelle Anführungszeichen oder andere Formatierungen
         return data.choices[0].message.content.trim()
-            .replace(/^["']|["']$/g, '')  // Entferne Anführungszeichen am Anfang/Ende
-            .replace(/^Translation: /i, '') // Entferne "Translation: " am Anfang
-            .replace(/^Improved text: /i, '') // Entferne "Improved text: " am Anfang
+            .replace(/^["']|["']$/g, '')
+            .replace(/^Translation: /i, '')
+            .replace(/^Improved text: /i, '')
             .trim();
     } catch (error) {
         console.error('API Error:', error);
-        throw new Error('Fehler bei der Verarbeitung: ' + error.message);
+        const errorMessages = {
+            'en': 'Error during processing: ',
+            'de': 'Fehler bei der Verarbeitung: ',
+            'fr': 'Erreur lors du traitement: ',
+            'es': 'Error durante el procesamiento: ',
+            'it': 'Errore durante l\'elaborazione: '
+        };
+        throw new Error(errorMessages[detectedLanguage] + error.message);
     }
 }
 
