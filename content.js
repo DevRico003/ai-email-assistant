@@ -8,7 +8,7 @@ const SUPPORTED_LANGUAGES = {
     'it': { name: 'Italiano', flag: '🇮🇹' }
 };
 
-async function detectFormality(text) {
+async function detectLanguage(text) {
     const apiKey = await chrome.storage.local.get(['groqApiKey']).then(result => result.groqApiKey);
     
     if (!apiKey) {
@@ -16,7 +16,7 @@ async function detectFormality(text) {
     }
 
     try {
-        const formalityResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const languageResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
@@ -27,21 +27,21 @@ async function detectFormality(text) {
                 messages: [
                     {
                         role: "system",
-                        content: "You are a formality detector. Respond only with 'formal' or 'informal'."
+                        content: "You are a language detector. Respond only with the language code: 'en', 'de', 'fr', 'es', or 'it'."
                     },
                     {
                         role: "user",
-                        content: `Determine if this text is formal or informal: ${text}`
+                        content: `Detect the language of this text and respond with the language code: ${text}`
                     }
                 ],
                 temperature: 0.1
             })
         });
-        const data = await formalityResponse.json();
+        const data = await languageResponse.json();
         return data.choices[0].message.content.trim().toLowerCase();
     } catch (error) {
-        console.error('Formality detection error:', error);
-        return 'formal'; // Fallback to formal in case of error
+        console.error('Language detection error:', error);
+        return 'de'; // Fallback auf Deutsch
     }
 }
 
@@ -290,88 +290,15 @@ async function showSuggestions(emailElement) {
             throw new Error('Keine aktuelle Email gefunden');
         }
 
-        const apiKey = await chrome.storage.local.get(['groqApiKey']).then(result => result.groqApiKey);
-        if (!apiKey) throw new Error('API Key nicht gefunden');
+        // Sprache und Formalität aus dem Kontext erkennen
+        const detectedLanguage = await detectLanguage(emailContext.latestEmail.text);
+        const isFormal = await window.detectFormality(emailContext.latestEmail.text, detectedLanguage);
+        
+        // Kontext um Sprache und Formalität erweitern
+        emailContext.language = detectedLanguage;
+        emailContext.isFormal = isFormal;
 
-        const isFormal = await detectFormality(emailContext.latestEmail.text);
-
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
-                messages: [
-                    {
-                        role: "system",
-                        content: `Generate exactly 3 distinct ${isFormal ? 'formal' : 'informal'} email responses in the same language as the original email. Each response must be complete and self-contained. Responses must be separated by |||. Do not add any other text or explanations.`
-                    },
-                    {
-                        role: "user",
-                        content: `Current conversation:
-                            Latest email to respond to (from ${emailContext.latestEmail.sender}):
-                            "${emailContext.latestEmail.text}"
-
-                            ${emailContext.previousEmails.length > 0 ? `
-                            Previous messages:
-                            ${emailContext.previousEmails.map(email => 
-                                `From: ${email.sender}
-                                Message: "${email.text}"`
-                            ).join('\n---\n')}` : ''}
-                            
-                            Generate 3 different appropriate responses to the latest email.`
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 1000
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`API Fehler: ${response.status}`);
-        }
-
-        const data = await response.json();
-        let suggestions = data.choices[0].message.content
-            .split('|||')
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
-
-        // Stelle sicher, dass wir genau 3 Vorschläge haben
-        if (suggestions.length < 3) {
-            // Wenn weniger als 3, generiere fehlende Vorschläge
-            const additionalResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: "llama-3.1-8b-instant",
-                    messages: [
-                        {
-                            role: "system",
-                            content: `Generate ${3 - suggestions.length} different ${isFormal ? 'formal' : 'informal'} email responses. Separate with |||.`
-                        },
-                        {
-                            role: "user",
-                            content: `Generate additional responses for: ${emailContext.latestEmail.text}`
-                        }
-                    ],
-                    temperature: 0.8
-                })
-            });
-            
-            const additionalData = await additionalResponse.json();
-            const additionalSuggestions = additionalData.choices[0].message.content
-                .split('|||')
-                .map(s => s.trim())
-                .filter(s => s.length > 0);
-            
-            suggestions = [...suggestions, ...additionalSuggestions].slice(0, 3);
-        }
+        const suggestions = await window.generateSuggestions(emailContext);
 
         // Erstelle Popup für Vorschläge
         const popupOverlay = document.createElement('div');
